@@ -1,3 +1,9 @@
+// DONE: Add sound effects
+// TODO: Add a check for the food spawning on the snake
+// TODO: Add a check for the food spawning on one another
+// TODO: Add a check for the food spawning when there is already food on the screen
+// TODO: Add a 
+
 use bevy::prelude::*;
 use bevy::time::FixedTimestep;
 use rand::Rng;
@@ -214,20 +220,26 @@ fn snake_movement_input(keyboard_input: Res<Input<KeyCode>>, mut heads: Query<&m
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn check_game_over(
     mut commands: Commands,
     mut reader: EventReader<GameOverEvent>,
     segments_res: ResMut<SnakeSegments>,
     food: Query<Entity, With<Food>>,
     segments: Query<Entity, With<SnakeSegment>>,
-    mut scoreboard: ResMut<Scoreboard>
+    mut scoreboard: ResMut<Scoreboard>,
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
 ) {
     // If the game is over, remove all entities and spawn a new snake
     if reader.iter().next().is_some() {
         //println!("Game Over!");
+        // Play the death sound
+        let death = asset_server.load("sounds/die.ogg");
+        audio.play(death);
         // Remove all entities
         for ent in food.iter().chain(segments.iter()) {
-            commands.entity(ent).despawn();
+            commands.entity(ent).despawn_recursive();
         }
         scoreboard.score = 0;
         spawn_snake(commands, segments_res);
@@ -240,12 +252,16 @@ fn snake_eating(
     food_positions: Query<(Entity, &Position), With<Food>>,
     head_positions: Query<&Position, With<SnakeHead>>,
     mut scoreboard: ResMut<Scoreboard>,
+    asset_server: Res<AssetServer>,
+    audio: Res<Audio>,
 ) {
     for head_pos in head_positions.iter() {
         for (ent, food_pos) in food_positions.iter() {
             if food_pos == head_pos {
                 commands.entity(ent).despawn();
                 growth_writer.send(GrowthEvent);
+                let eat = asset_server.load("sounds/eat.ogg");
+                audio.play(eat);
                 scoreboard.score += 1;
             }
         }
