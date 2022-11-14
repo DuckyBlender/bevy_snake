@@ -2,7 +2,7 @@
 // TODO: Add a check for the food spawning on the snake
 // TODO: Add a check for the food spawning on one another
 // TODO: Add a check for the food spawning when there is already food on the screen
-// TODO: Add a 
+// TODO: Fix the bug where the snake can go through itself when clicking the opposite direction in a specific way
 
 use bevy::prelude::*;
 use bevy::time::FixedTimestep;
@@ -313,6 +313,10 @@ fn position_translation(windows: Res<Windows>, mut q: Query<(&Position, &mut Tra
 
 fn food_spawner(mut commands: Commands) {
     let mut rng = rand::thread_rng();
+    // Generate two random numbers between 0 and ARENA_WIDTH and ARENA_HEIGHT
+    let x_pos = rng.gen_range(0..ARENA_WIDTH) as i32;
+    let y_pos = rng.gen_range(0..ARENA_HEIGHT) as i32;
+
     commands
         .spawn(SpriteBundle {
             sprite: Sprite {
@@ -323,8 +327,8 @@ fn food_spawner(mut commands: Commands) {
         })
         .insert(Food)
         .insert(Position {
-            x: rng.gen_range(0..ARENA_WIDTH as i32),
-            y: rng.gen_range(0..ARENA_HEIGHT as i32),
+            x: x_pos,
+            y: y_pos,
         })
         .insert(Size::square(0.8));
 }
