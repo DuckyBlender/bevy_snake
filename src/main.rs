@@ -1,7 +1,6 @@
 // DONE: Add sound effects
-// TODO: Add a check for the food spawning on the snake
-// TODO: Add a check for the food spawning on one another
-// TODO: Add a check for the food spawning when there is already food on the screen
+// DONE: Add a check for the food spawning on the snake
+// DONE: Add a check for the food spawning when there is already food on the screen
 // TODO: Fix the bug where the snake can go through itself when clicking the opposite direction in a specific way
 
 use bevy::prelude::*;
@@ -15,7 +14,9 @@ const SNAKE_SEGMENT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
 const ARENA_HEIGHT: u32 = 10;
 const ARENA_WIDTH: u32 = 10;
 
-#[derive(Component, Clone, Copy, PartialEq, Eq)]
+const MAX_FOOD_COUNT: u32 = 1;
+
+#[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 struct Position {
     x: i32,
     y: i32,
@@ -311,33 +312,51 @@ fn position_translation(windows: Res<Windows>, mut q: Query<(&Position, &mut Tra
     }
 }
 
-fn food_spawner(mut commands: Commands) {
-    let mut rng = rand::thread_rng();
-    // Generate two random numbers between 0 and ARENA_WIDTH and ARENA_HEIGHT
-    let x_pos = rng.gen_range(0..ARENA_WIDTH) as i32;
-    let y_pos = rng.gen_range(0..ARENA_HEIGHT) as i32;
+fn food_spawner(mut commands: Commands, segments: Res<SnakeSegments>, mut positions: Query<&Position>, food_positions: Query<(Entity, &Position), With<Food>>,) {
+    // Check if there is already food on the board
+    let food_count: u32 = food_positions.iter().count() as u32;
+    if food_count >= MAX_FOOD_COUNT {
+        println!("Already {} food on the board", food_count);
+        return;
+    }
 
-    commands
-        .spawn(SpriteBundle {
-            sprite: Sprite {
-                color: FOOD_COLOR,
-                ..default()
-            },
-            ..default()
-        })
-        .insert(Food)
-        .insert(Position {
-            x: x_pos,
-            y: y_pos,
-        })
-        .insert(Size::square(0.8));
+    let mut rng = rand::thread_rng();
+    loop {
+        // Generate two random numbers between 0 and ARENA_WIDTH and ARENA_HEIGHT
+        let x_pos = rng.gen_range(0..ARENA_WIDTH) as i32;
+        let y_pos = rng.gen_range(0..ARENA_HEIGHT) as i32;
+        // Check if the position is already occupied by a snake segment
+        let mut segment_positions = segments
+                .iter()
+                .map(|e| *positions.get_mut(*e).unwrap());
+        if segment_positions.any(|p| p.x == x_pos && p.y == y_pos) {
+            //println!("Tried spawning food on snake! ({}, {}) Trying again...", x_pos, y_pos);
+            continue;
+        }
+        //println!("Spawning food at {}, {}", x_pos, y_pos);
+        //println!("Segments: {:?}", segment_positions);
+        
+            commands
+                .spawn(SpriteBundle {
+                    sprite: Sprite {
+                        color: FOOD_COLOR,
+                        ..default()
+                    },
+                    ..default()
+                })
+                .insert(Food)
+                .insert(Position { x: x_pos, y: y_pos })
+                .insert(Size::square(0.8));
+        break;
+    }
+    
+   
 }
 
 fn main() {
     App::new()
         // Background color
         .insert_resource(ClearColor(Color::rgb(0.04, 0.04, 0.04)))
-
         // Window
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             window: WindowDescriptor {
@@ -349,45 +368,36 @@ fn main() {
             },
             ..default()
         }))
-
         // Initialize scoreboard
         .insert_resource(Scoreboard { score: 0 })
-
         // Setup different systems
         .add_startup_system(setup_camera)
         .add_startup_system(spawn_snake)
         .add_startup_system(setup_scoreboard)
-
         // Setup snake segments
         .insert_resource(SnakeSegments::default())
         .insert_resource(LastTailPosition::default())
         .add_event::<GrowthEvent>()
-
         // Setup movement
         .add_system(snake_movement_input.before(snake_movement))
-
         // Setup game over event
         .add_event::<GameOverEvent>()
-
         // Setup timestep for snake stuff
         .add_system_set(
             SystemSet::new()
-                .with_run_criteria(FixedTimestep::step(1.0/6.0))
+                .with_run_criteria(FixedTimestep::step(1.0 / 6.0))
                 .with_system(snake_movement)
                 .with_system(snake_eating.after(snake_movement))
-                .with_system(snake_growth.after(snake_eating))
+                .with_system(snake_growth.after(snake_eating)),
         )
-
         // Setup game over after the snake has moved
         .add_system(check_game_over.after(snake_movement))
-
         // Setup food spawner
         .add_system_set(
             SystemSet::new()
                 .with_run_criteria(FixedTimestep::step(1.0))
-                .with_system(food_spawner)
+                .with_system(food_spawner),
         )
-
         // Setup scaling
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
@@ -395,13 +405,10 @@ fn main() {
                 .with_system(position_translation)
                 .with_system(size_scaling),
         )
-
         // Setup scoreboard
         .add_system(update_scoreboard)
-
         // Close on escape
         .add_system(bevy::window::close_on_esc)
-
         // Run
         .run();
 }
