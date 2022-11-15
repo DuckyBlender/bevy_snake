@@ -392,11 +392,7 @@ fn main() {
         // Setup game over after the snake has moved
         .add_system(check_game_over.after(snake_movement))
         // Setup food spawner
-        .add_system_set(
-            SystemSet::new()
-                .with_run_criteria(FixedTimestep::step(1.0))
-                .with_system(food_spawner),
-        )
+        .add_system(food_spawner)
         // Setup scaling
         .add_system_set_to_stage(
             CoreStage::PostUpdate,
