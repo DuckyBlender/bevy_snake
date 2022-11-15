@@ -1,23 +1,30 @@
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <style>
-      body {
-        background: black;
-        /* center div */
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        
-      }
 
-      canvas {
-        background-color: white;
-      }
+<head>
+    <meta charset="UTF-8" />
+    <script src="./bevy_snake.js"></script>
+    <style>
+        body {
+            background: black;
+            /* center div */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+        }
+
+        canvas {
+            background-color: white;
+        }
     </style>
-  </head>
-  <script type="module">
-    import init from './bevy_snake.js'
-    init()
-  </script>
+</head>
+
+<body onclick="audioRes()">
+    
+    <script type="module">
+        import init from './bevy_snake.js'
+        init()
+    </script>
+</body>
+
 </html>

@@ -10,6 +10,19 @@ function getObject(idx) { return heap[idx]; }
 
 let heap_next = heap.length;
 
+function audioRes() {
+    if (typeof AudioContext !== 'undefined') {
+        var audioCtx = new AudioContext();
+    } else if (typeof webkitAudioContext !== 'undefined') {
+        var audioCtx = new webkitAudioContext();
+    }
+    var oscillator = audioCtx.createOscillator();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // value in hertz
+    oscillator.connect(audioCtx.destination);
+    oscillator.start();
+}
+
 function dropObject(idx) {
     if (idx < 36) return;
     heap[idx] = heap_next;
