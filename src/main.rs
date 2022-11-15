@@ -14,7 +14,7 @@ const SNAKE_SEGMENT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
 const ARENA_HEIGHT: u32 = 12;
 const ARENA_WIDTH: u32 = 12;
 
-const MAX_FOOD_COUNT: u32 = 1;
+const MAX_FOOD_COUNT: u32 = 5;
 
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 struct Position {
@@ -42,6 +42,7 @@ struct SnakeHead {
     direction: Direction,
 }
 
+struct SpawnFoodEvent;
 struct GameOverEvent;
 struct GrowthEvent;
 
@@ -119,7 +120,7 @@ fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
     text.sections[1].value = scoreboard.score.to_string();
 }
 
-fn spawn_snake(mut commands: Commands, mut segments: ResMut<SnakeSegments>) {
+fn spawn_snake(mut commands: Commands, mut segments: ResMut<SnakeSegments>, mut foodevent_writer: EventWriter<SpawnFoodEvent>) {
     *segments = SnakeSegments(vec![
         commands
             .spawn(SpriteBundle {
@@ -138,6 +139,9 @@ fn spawn_snake(mut commands: Commands, mut segments: ResMut<SnakeSegments>) {
             .id(),
         spawn_segment(commands, Position { x: 3, y: 2 }),
     ]);
+    for _ in 0..MAX_FOOD_COUNT {
+        foodevent_writer.send(SpawnFoodEvent);
+    }
 }
 
 fn spawn_segment(mut commands: Commands, position: Position) -> Entity {
@@ -231,6 +235,7 @@ fn check_game_over(
     mut scoreboard: ResMut<Scoreboard>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
+    foodevent_writer: EventWriter<SpawnFoodEvent>
 ) {
     // If the game is over, remove all entities and spawn a new snake
     if reader.iter().next().is_some() {
@@ -243,10 +248,11 @@ fn check_game_over(
             commands.entity(ent).despawn_recursive();
         }
         scoreboard.score = 0;
-        spawn_snake(commands, segments_res);
+        spawn_snake(commands, segments_res, foodevent_writer);
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn snake_eating(
     mut commands: Commands,
     mut growth_writer: EventWriter<GrowthEvent>,
@@ -255,12 +261,14 @@ fn snake_eating(
     mut scoreboard: ResMut<Scoreboard>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
+    mut foodevent_writer: EventWriter<SpawnFoodEvent>,
 ) {
     for head_pos in head_positions.iter() {
         for (ent, food_pos) in food_positions.iter() {
             if food_pos == head_pos {
                 commands.entity(ent).despawn();
                 growth_writer.send(GrowthEvent);
+                foodevent_writer.send(SpawnFoodEvent);
                 let eat = asset_server.load("sounds/eat.ogg");
                 audio.play(eat);
                 scoreboard.score += 1;
@@ -317,38 +325,43 @@ fn food_spawner(
     segments: Res<SnakeSegments>,
     mut positions: Query<&Position>,
     food_positions: Query<(Entity, &Position), With<Food>>,
+    mut foodevent_listener: EventReader<SpawnFoodEvent>,
 ) {
-    let food_count: u32 = food_positions.iter().count() as u32;
-    if food_count >= MAX_FOOD_COUNT {
-        //println!("Already {} food on the board", food_count);
-        return;
-    }
-    let mut rng = rand::thread_rng();
-    // Loop until the spawned food isn't already occupied.
-    loop {
-        // Generate two random numbers between 0 and ARENA_WIDTH and ARENA_HEIGHT
-        let x_pos = rng.gen_range(0..ARENA_WIDTH) as i32;
-        let y_pos = rng.gen_range(0..ARENA_HEIGHT) as i32;
-        // Check if the position is already occupied by a snake segment
-        let mut segment_positions = segments.iter().map(|e| *positions.get_mut(*e).unwrap());
-        if segment_positions.any(|p| p.x == x_pos && p.y == y_pos) {
-            //println!("Tried spawning food on snake! ({}, {}) Trying again...", x_pos, y_pos);
-            continue;
+    // Check for food spawn event
+    // Loop through all spawn event counts
+    for _ in foodevent_listener.iter() {
+        let food_count: u32 = food_positions.iter().count() as u32;
+        if food_count >= MAX_FOOD_COUNT {
+            //println!("Already {} food on the board", food_count);
+            return;
         }
-        //println!("Spawning food at {}, {}", x_pos, y_pos);
-        //println!("Segments: {:?}", segment_positions);
-        commands
-            .spawn(SpriteBundle {
-                sprite: Sprite {
-                    color: FOOD_COLOR,
+        let mut rng = rand::thread_rng();
+        // Loop until the spawned food isn't already occupied.
+        loop {
+            // Generate two random numbers between 0 and ARENA_WIDTH and ARENA_HEIGHT
+            let x_pos = rng.gen_range(0..ARENA_WIDTH) as i32;
+            let y_pos = rng.gen_range(0..ARENA_HEIGHT) as i32;
+            // Check if the position is already occupied by a snake segment
+            let mut segment_positions = segments.iter().map(|e| *positions.get_mut(*e).unwrap());
+            if segment_positions.any(|p| p.x == x_pos && p.y == y_pos) {
+                //println!("Tried spawning food on snake! ({}, {}) Trying again...", x_pos, y_pos);
+                continue;
+            }
+            //println!("Spawning food at {}, {}", x_pos, y_pos);
+            //println!("Segments: {:?}", segment_positions);
+            commands
+                .spawn(SpriteBundle {
+                    sprite: Sprite {
+                        color: FOOD_COLOR,
+                        ..default()
+                    },
                     ..default()
-                },
-                ..default()
-            })
-            .insert(Food)
-            .insert(Position { x: x_pos, y: y_pos })
-            .insert(Size::square(0.8));
-        break;
+                })
+                .insert(Food)
+                .insert(Position { x: x_pos, y: y_pos })
+                .insert(Size::square(0.8));
+            break;
+        }
     }
 }
 
@@ -377,10 +390,12 @@ fn main() {
         .insert_resource(SnakeSegments::default())
         .insert_resource(LastTailPosition::default())
         .add_event::<GrowthEvent>()
+        .add_event::<SpawnFoodEvent>()
         // Setup movement
         .add_system(snake_movement_input.before(snake_movement))
         // Setup game over event
         .add_event::<GameOverEvent>()
+        
         // Setup timestep for snake stuff
         .add_system_set(
             SystemSet::new()
