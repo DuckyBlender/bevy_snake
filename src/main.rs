@@ -1,7 +1,7 @@
-// DONE: Add sound effects
-// DONE: Add a check for the food spawning on the snake
-// DONE: Add a check for the food spawning when there is already food on the screen
 // TODO: Fix the bug where the snake can go through itself when clicking the opposite direction in a specific way
+
+// Don't show the console window
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use bevy::prelude::*;
 use bevy::time::FixedTimestep;
@@ -11,8 +11,8 @@ const SNAKE_HEAD_COLOR: Color = Color::rgb(0.7, 0.7, 0.7);
 const FOOD_COLOR: Color = Color::rgb(1.0, 0.0, 0.0);
 const SNAKE_SEGMENT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
 
-const ARENA_HEIGHT: u32 = 10;
-const ARENA_WIDTH: u32 = 10;
+const ARENA_HEIGHT: u32 = 12;
+const ARENA_WIDTH: u32 = 12;
 
 const MAX_FOOD_COUNT: u32 = 1;
 
@@ -312,45 +312,44 @@ fn position_translation(windows: Res<Windows>, mut q: Query<(&Position, &mut Tra
     }
 }
 
-fn food_spawner(mut commands: Commands, segments: Res<SnakeSegments>, mut positions: Query<&Position>, food_positions: Query<(Entity, &Position), With<Food>>,) {
-    // Check if there is already food on the board
+fn food_spawner(
+    mut commands: Commands,
+    segments: Res<SnakeSegments>,
+    mut positions: Query<&Position>,
+    food_positions: Query<(Entity, &Position), With<Food>>,
+) {
     let food_count: u32 = food_positions.iter().count() as u32;
     if food_count >= MAX_FOOD_COUNT {
-        println!("Already {} food on the board", food_count);
+        //println!("Already {} food on the board", food_count);
         return;
     }
-
     let mut rng = rand::thread_rng();
+    // Loop until the spawned food isn't already occupied.
     loop {
         // Generate two random numbers between 0 and ARENA_WIDTH and ARENA_HEIGHT
         let x_pos = rng.gen_range(0..ARENA_WIDTH) as i32;
         let y_pos = rng.gen_range(0..ARENA_HEIGHT) as i32;
         // Check if the position is already occupied by a snake segment
-        let mut segment_positions = segments
-                .iter()
-                .map(|e| *positions.get_mut(*e).unwrap());
+        let mut segment_positions = segments.iter().map(|e| *positions.get_mut(*e).unwrap());
         if segment_positions.any(|p| p.x == x_pos && p.y == y_pos) {
             //println!("Tried spawning food on snake! ({}, {}) Trying again...", x_pos, y_pos);
             continue;
         }
         //println!("Spawning food at {}, {}", x_pos, y_pos);
         //println!("Segments: {:?}", segment_positions);
-        
-            commands
-                .spawn(SpriteBundle {
-                    sprite: Sprite {
-                        color: FOOD_COLOR,
-                        ..default()
-                    },
+        commands
+            .spawn(SpriteBundle {
+                sprite: Sprite {
+                    color: FOOD_COLOR,
                     ..default()
-                })
-                .insert(Food)
-                .insert(Position { x: x_pos, y: y_pos })
-                .insert(Size::square(0.8));
+                },
+                ..default()
+            })
+            .insert(Food)
+            .insert(Position { x: x_pos, y: y_pos })
+            .insert(Size::square(0.8));
         break;
     }
-    
-   
 }
 
 fn main() {
