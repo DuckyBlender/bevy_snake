@@ -2,7 +2,17 @@
 
 <head>
     <meta charset="UTF-8" />
-    <script src="./bevy_snake.js"></script>
+    <script>
+        function audioRes() {
+            if (typeof AudioContext !== 'undefined') {
+                var audioCtx = new AudioContext();
+                console.log("New audio context defined!");
+            } else if (typeof webkitAudioContext !== 'undefined') {
+                var audioCtx = new webkitAudioContext();
+                console.log("New webkit audio context defined!");
+            }
+        }
+    </script>
     <style>
         body {
             background: black;
@@ -20,7 +30,7 @@
 </head>
 
 <body onclick="audioRes()">
-    
+
     <script type="module">
         import init from './bevy_snake.js'
         init()
