@@ -14,7 +14,7 @@ const SNAKE_SEGMENT_COLOR: Color = Color::rgb(0.3, 0.3, 0.3);
 const ARENA_HEIGHT: u32 = 12;
 const ARENA_WIDTH: u32 = 12;
 
-const MAX_FOOD_COUNT: u32 = 5;
+const MAX_FOOD_COUNT: u32 = 1;
 
 #[derive(Component, Clone, Copy, PartialEq, Eq, Debug)]
 struct Position {
@@ -120,7 +120,11 @@ fn update_scoreboard(scoreboard: Res<Scoreboard>, mut query: Query<&mut Text>) {
     text.sections[1].value = scoreboard.score.to_string();
 }
 
-fn spawn_snake(mut commands: Commands, mut segments: ResMut<SnakeSegments>, mut foodevent_writer: EventWriter<SpawnFoodEvent>) {
+fn spawn_snake(
+    mut commands: Commands,
+    mut segments: ResMut<SnakeSegments>,
+    mut foodevent_writer: EventWriter<SpawnFoodEvent>,
+) {
     *segments = SnakeSegments(vec![
         commands
             .spawn(SpriteBundle {
@@ -235,7 +239,7 @@ fn check_game_over(
     mut scoreboard: ResMut<Scoreboard>,
     asset_server: Res<AssetServer>,
     audio: Res<Audio>,
-    foodevent_writer: EventWriter<SpawnFoodEvent>
+    foodevent_writer: EventWriter<SpawnFoodEvent>,
 ) {
     // If the game is over, remove all entities and spawn a new snake
     if reader.iter().next().is_some() {
@@ -328,7 +332,6 @@ fn food_spawner(
     mut foodevent_listener: EventReader<SpawnFoodEvent>,
 ) {
     // Check for food spawn event
-    // Loop through all spawn event counts
     for _ in foodevent_listener.iter() {
         let food_count: u32 = food_positions.iter().count() as u32;
         if food_count >= MAX_FOOD_COUNT {
@@ -336,7 +339,7 @@ fn food_spawner(
             return;
         }
         let mut rng = rand::thread_rng();
-        // Loop until the spawned food isn't already occupied.
+        // Loop until the spawned food isn't occupied.
         loop {
             // Generate two random numbers between 0 and ARENA_WIDTH and ARENA_HEIGHT
             let x_pos = rng.gen_range(0..ARENA_WIDTH) as i32;
@@ -345,6 +348,11 @@ fn food_spawner(
             let mut segment_positions = segments.iter().map(|e| *positions.get_mut(*e).unwrap());
             if segment_positions.any(|p| p.x == x_pos && p.y == y_pos) {
                 //println!("Tried spawning food on snake! ({}, {}) Trying again...", x_pos, y_pos);
+                continue;
+            }
+            // Check if the position is already occupied by food
+            if food_positions.iter().any(|(_, p)| p.x == x_pos && p.y == y_pos) {
+                //println!("Tried spawning food on food! ({}, {}) Trying again...", x_pos, y_pos);
                 continue;
             }
             //println!("Spawning food at {}, {}", x_pos, y_pos);
@@ -395,7 +403,6 @@ fn main() {
         .add_system(snake_movement_input.before(snake_movement))
         // Setup game over event
         .add_event::<GameOverEvent>()
-        
         // Setup timestep for snake stuff
         .add_system_set(
             SystemSet::new()
