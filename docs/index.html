@@ -2,35 +2,11 @@
 
 <head>
     <meta charset="UTF-8" />
-    <script>
-        function audioRes() {
-            if (typeof AudioContext !== 'undefined') {
-                var audioCtx = new AudioContext();
-                console.log("New audio context defined!");
-            } else if (typeof webkitAudioContext !== 'undefined') {
-                var audioCtx = new webkitAudioContext();
-                console.log("New webkit audio context defined!");
-            }
-        }
-    </script>
-    <style>
-        body {
-            background: black;
-            /* center div */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-
-        }
-
-        canvas {
-            background-color: white;
-        }
-    </style>
+    <script src="./sound.js"></script>
+    <link rel='stylesheet' type='text/css' media='screen' href='main.css'>\
 </head>
 
-<body onclick="audioRes()">
-
+<body>
     <script type="module">
         import init from './bevy_snake.js'
         init()

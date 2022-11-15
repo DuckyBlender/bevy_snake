@@ -1,0 +1,12 @@
+body {
+    background: black;
+    /* center div */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+}
+
+canvas {
+    background-color: white;
+}
