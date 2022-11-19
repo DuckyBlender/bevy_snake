@@ -40,6 +40,7 @@ impl Size {
 #[derive(Component)]
 struct SnakeHead {
     direction: Direction,
+    next_direction: Direction,
 }
 
 struct SpawnFoodEvent;
@@ -136,6 +137,7 @@ fn spawn_snake(
             })
             .insert(SnakeHead {
                 direction: Direction::Up,
+                next_direction: Direction::Up,
             })
             .insert(SnakeSegment)
             .insert(Position { x: 3, y: 3 })
@@ -167,10 +169,11 @@ fn snake_movement(
     mut last_tail_position: ResMut<LastTailPosition>,
     mut game_over_writer: EventWriter<GameOverEvent>,
     segments: ResMut<SnakeSegments>,
-    mut heads: Query<(Entity, &SnakeHead)>,
+    mut heads: Query<(Entity, &mut SnakeHead)>,
     mut positions: Query<&mut Position>,
 ) {
-    if let Some((head_entity, head)) = heads.iter_mut().next() {
+    if let Some((head_entity, mut head) ) = heads.iter_mut().next() {
+        head.direction = head.next_direction;
         let segment_positions = segments
             .iter()
             .map(|e| *positions.get_mut(*e).unwrap())
@@ -224,7 +227,7 @@ fn snake_movement_input(keyboard_input: Res<Input<KeyCode>>, mut heads: Query<&m
             head.direction
         };
         if dir != head.direction.opposite() {
-            head.direction = dir;
+            head.next_direction = dir;
         }
     }
 }
